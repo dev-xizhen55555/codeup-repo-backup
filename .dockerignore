@@ -1,0 +1,15 @@
+# 白名单限制构建上下文, 即使新增本地配置也不会发送给构建器.
+**
+!Dockerfile
+!requirements.txt
+!unified_backup.py
+!config.py
+!codeup_client.py
+!gitlab_client.py
+!gitee_client.py
+!atomgit_client.py
+!git_sync.py
+!state_store.py
+!s3_config_loader.py
+!scheduler.py
+!web_server.py
