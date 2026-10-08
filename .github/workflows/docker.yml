@@ -40,7 +40,7 @@ jobs:
           import ast
           from pathlib import Path
           root = Path("/app")
-          allowed = {"requirements.txt", "unified_backup.py", "config.py", "codeup_client.py", "gitlab_client.py", "gitee_client.py", "atomgit_client.py", "git_sync.py", "state_store.py", "s3_config_loader.py", "scheduler.py", "web_server.py"}
+          allowed = {"requirements.txt", "unified_backup.py", "config.py", "codeup_client.py", "gitlab_client.py", "gitee_client.py", "atomgit_client.py", "github_client.py", "git_sync.py", "state_store.py", "s3_config_loader.py", "scheduler.py", "web_server.py"}
           actual = {item.name for item in root.iterdir()}
           assert actual == allowed, f"Unexpected runtime files: {actual ^ allowed}"
           for item in root.glob("*.py"):
@@ -78,7 +78,7 @@ jobs:
           push: true
           tags: |
             ghcr.io/dev-xizhen55555/codeup-repo-backup:latest
-            ghcr.io/dev-xizhen55555/codeup-repo-backup:v2.0
+            ghcr.io/dev-xizhen55555/codeup-repo-backup:v2.1
             ghcr.io/dev-xizhen55555/codeup-repo-backup:sha-${{ github.sha }}
           labels: |
             org.opencontainers.image.source=https://github.com/${{ github.repository }}

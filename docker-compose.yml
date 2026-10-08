@@ -1,7 +1,7 @@
 services:
-  # 顺序备份到 GitLab, Gitee, AtomGit(固定私有, Token 仅在 OSS 配置中, 为空则跳过)
+  # 顺序备份到 GitLab, Gitee, AtomGit, GitHub(后两者固定私有, Token 仅在 OSS 配置中, 为空则跳过)
   backup:
-    image: ghcr.io/dev-xizhen55555/codeup-repo-backup:v2.0
+    image: ghcr.io/dev-xizhen55555/codeup-repo-backup:v2.1
     container_name: codeup-backup
     ports:
       - "127.0.0.1:8080:8080"

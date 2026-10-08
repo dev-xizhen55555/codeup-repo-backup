@@ -10,7 +10,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # 白名单复制运行代码, 配置和凭据只在容器启动时从对象存储读取.
 COPY unified_backup.py config.py codeup_client.py gitlab_client.py gitee_client.py \
-     atomgit_client.py git_sync.py state_store.py s3_config_loader.py \
+     atomgit_client.py github_client.py git_sync.py state_store.py s3_config_loader.py \
      scheduler.py web_server.py ./
 
 RUN mkdir -p /tmp/backup_work

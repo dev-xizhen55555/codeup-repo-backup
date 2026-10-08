@@ -38,6 +38,7 @@ class StatusHandler(BaseHTTPRequestHandler):
             )
             gitee_configured = bool(os.getenv("GITEE_TOKEN"))
             atomgit_configured = bool(os.getenv("ATOMGIT_TOKEN", "").strip())
+            github_configured = bool(os.getenv("GITHUB_BACKUP_TOKEN", "").strip())
 
             status = {
                 "s3_domain": s3_domain,
@@ -49,7 +50,8 @@ class StatusHandler(BaseHTTPRequestHandler):
                 "platforms": {
                     "gitlab": "configured" if gitlab_configured else "not configured",
                     "gitee": "configured" if gitee_configured else "not configured",
-                    "atomgit": "configured" if atomgit_configured else "not configured"
+                    "atomgit": "configured" if atomgit_configured else "not configured",
+                    "github": "configured" if github_configured else "not configured"
                 },
                 "status": "running"
             }

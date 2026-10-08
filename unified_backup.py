@@ -1,4 +1,4 @@
-"""Docker 统一备份入口: 依次备份到 GitLab, Gitee 和 AtomGit."""
+"""Docker 统一备份入口: 依次备份到 GitLab, Gitee, AtomGit 和 GitHub."""
 import sys
 from datetime import datetime
 
@@ -7,6 +7,7 @@ from codeup_client import CodeupClient
 from gitlab_client import GitLabClient
 from gitee_client import GiteeClient
 from atomgit_client import AtomGitClient
+from github_client import GitHubClient
 import git_sync
 import state_store
 
@@ -27,14 +28,23 @@ def backup_to_platform(platform_name: str, client, state_key: str, repos: list[d
     _log(f"开始备份到 {platform_name}")
     _log(f"{'='*60}")
 
+    if state_key == "github":
+        # GitHub 名称不区分大小写, 多个源仓库不能映射到同一备份目标.
+        paths = [(repo.get("path") or repo.get("name", "")) for repo in repos]
+        if len({path.lower() for path in paths}) != len(paths):
+            raise ValueError("Codeup 仓库路径在 GitHub 上存在大小写冲突, 拒绝覆盖备份")
+
     store = state_store.get_store(
         use_gitee=(platform_name == "Gitee"),
         use_atomgit=(state_key == "atomgit"),
+        use_github=(state_key == "github"),
     )
 
-    atomgit_target = None
-    if state_key == "atomgit":
-        atomgit_target = {"api_base": client.api_base, "login": client.username}
+    target_identity = None
+    if state_key in ("atomgit", "github"):
+        target_identity = {"api_base": client.api_base, "login": client.username}
+        if state_key == "github":
+            target_identity["user_id"] = client.user_id
 
     # 加载状态
     if config.FORCE_FULL:
@@ -43,13 +53,13 @@ def backup_to_platform(platform_name: str, client, state_key: str, repos: list[d
     else:
         try:
             state = store.load()
-            if atomgit_target is not None:
+            if target_identity is not None:
                 # 切换账号或 API 地址后, 旧目标的成功记录不能用于新目标.
-                if state.get("target") == atomgit_target and isinstance(state.get("repositories"), dict):
+                if state.get("target") == target_identity and isinstance(state.get("repositories"), dict):
                     state = state["repositories"]
                 else:
                     state = {}
-                    _log("AtomGit 目标身份变化或尚无状态, 本次全量同步")
+                    _log(f"{platform_name} 目标身份变化或尚无状态, 本次全量同步")
             _log(f"增量状态来自 {store.describe()} (已记录 {len(state)} 个仓库)")
         except Exception as exc:
             state = {}
@@ -147,8 +157,8 @@ def backup_to_platform(platform_name: str, client, state_key: str, repos: list[d
         if succeeded:
             try:
                 saved_state = state
-                if atomgit_target is not None:
-                    saved_state = {"target": atomgit_target, "repositories": state}
+                if target_identity is not None:
+                    saved_state = {"target": target_identity, "repositories": state}
                 store.save(saved_state)
                 _log(f"第 {batch_num} 批状态已保存")
             except Exception as exc:
@@ -182,7 +192,7 @@ def _sync_one_repo(client, platform_name: str, repo_path: str, name: str, http_u
             _log(f"{prefix} → {platform_name} 已存在，镜像覆盖")
         else:
             _log(f"{prefix} → {platform_name} 不存在，创建仓库")
-            if platform_name in ("GitLab", "AtomGit"):
+            if platform_name in ("GitLab", "AtomGit", "GitHub"):
                 client.create_repo(name=name, path=repo_path, description=description)
             else:
                 client.create_repo(name=repo_path, description=description, private=True)
@@ -224,8 +234,10 @@ def backup() -> int:
 
     atomgit_configured = bool(config.ATOMGIT_TOKEN)
 
-    if not any((gitlab_configured, gitee_configured, atomgit_configured)):
-        _log("错误: GitLab, Gitee 和 AtomGit 都未配置, 无法执行备份", err=True)
+    github_configured = bool(config.GITHUB_BACKUP_TOKEN)
+
+    if not any((gitlab_configured, gitee_configured, atomgit_configured, github_configured)):
+        _log("错误: GitLab, Gitee, AtomGit 和 GitHub 都未配置, 无法执行备份", err=True)
         return 1
 
     total_success = 0
@@ -236,6 +248,7 @@ def backup() -> int:
         ("GitLab", "gitlab", gitlab_configured, GitLabClient),
         ("Gitee", "gitee", gitee_configured, GiteeClient),
         ("AtomGit", "atomgit", atomgit_configured, AtomGitClient),
+        ("GitHub", "github", github_configured, GitHubClient),
     ]
     for platform_name, state_key, configured, client_class in platforms:
         if not configured:
@@ -251,8 +264,8 @@ def backup() -> int:
         except Exception as exc:
             error_str = str(exc).lower()
             auth_error = any(word in error_str for word in ("401", "unauthorized", "authentication"))
-            # 保留旧平台鉴权失败跳过的行为, 新配置的 AtomGit 失败必须让任务报错.
-            if auth_error and platform_name != "AtomGit":
+            # 保留旧平台鉴权失败跳过的行为, AtomGit 和 GitHub 失败必须让任务报错.
+            if auth_error and platform_name in ("GitLab", "Gitee"):
                 _log(f"{platform_name} 鉴权失败(401), 跳过: {exc}", err=True)
             else:
                 _log(f"{platform_name} 备份失败: {exc}", err=True)

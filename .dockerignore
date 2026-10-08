@@ -8,6 +8,7 @@
 !gitlab_client.py
 !gitee_client.py
 !atomgit_client.py
+!github_client.py
 !git_sync.py
 !state_store.py
 !s3_config_loader.py
