@@ -44,6 +44,9 @@ GITEE_TOKEN = os.getenv("GITEE_TOKEN", "").strip()
 ATOMGIT_TOKEN = os.getenv("ATOMGIT_TOKEN", "").strip()
 ATOMGIT_API_BASE = os.getenv("ATOMGIT_API_BASE", "https://api.atomgit.com/api/v5").strip().rstrip("/")
 
+# ===== GitHub 备份 (与 Actions 自带 GITHUB_TOKEN 独立) =====
+GITHUB_BACKUP_TOKEN = os.getenv("GITHUB_BACKUP_TOKEN", "").strip()
+
 # ===== 备份行为 =====
 BACKUP_VISIBILITY = os.getenv("BACKUP_VISIBILITY", "private").strip()
 WORK_DIR = os.getenv("WORK_DIR", "./.backup_work").strip()
@@ -61,7 +64,9 @@ S3_REGION = os.getenv("S3_REGION", "").strip()
 S3_STATE_KEY = os.getenv("S3_STATE_KEY", "codeup-backup/state.json").strip()
 S3_STATE_KEY_GITEE = os.getenv("S3_STATE_KEY_GITEE", "codeup-backup/state-gitee.json").strip()
 S3_STATE_KEY_ATOMGIT = os.getenv("S3_STATE_KEY_ATOMGIT", "codeup-backup/state-atomgit.json").strip()
+S3_STATE_KEY_GITHUB = os.getenv("S3_STATE_KEY_GITHUB", "codeup-backup/state-github.json").strip()
 LOCAL_STATE_FILE = os.getenv("LOCAL_STATE_FILE", "./.backup_state.json").strip()
 LOCAL_STATE_FILE_GITEE = os.getenv("LOCAL_STATE_FILE_GITEE", "./.backup_state_gitee.json").strip()
 LOCAL_STATE_FILE_ATOMGIT = os.getenv("LOCAL_STATE_FILE_ATOMGIT", "./.backup_state_atomgit.json").strip()
+LOCAL_STATE_FILE_GITHUB = os.getenv("LOCAL_STATE_FILE_GITHUB", "./.backup_state_github.json").strip()
 S3_ENABLED = bool(S3_ENDPOINT and S3_BUCKET and S3_ACCESS_KEY_ID and S3_SECRET_ACCESS_KEY)

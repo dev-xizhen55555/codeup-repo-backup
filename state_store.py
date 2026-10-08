@@ -4,27 +4,26 @@ import json
 import config
 
 
-def _atomgit_state_location(use_s3: bool) -> str:
-    if use_s3:
-        location = config.S3_STATE_KEY_ATOMGIT
-        other_locations = (config.S3_STATE_KEY, config.S3_STATE_KEY_GITEE)
-    else:
-        import os
+def _isolated_state_location(platform: str, use_s3: bool) -> str:
+    import os
 
-        location = config.LOCAL_STATE_FILE_ATOMGIT
-        other_locations = (
-            config.LOCAL_STATE_FILE, config.LOCAL_STATE_FILE_GITEE,
-        )
-        other_locations = tuple(os.path.abspath(path) for path in other_locations)
-    comparable = location if use_s3 else os.path.abspath(location)
-    # 手动配置也必须保持状态隔离, 否则首次 AtomGit 备份可能误用其他平台记录.
+    prefix = "S3_STATE_KEY" if use_s3 else "LOCAL_STATE_FILE"
+    keys = {"gitlab": prefix, "gitee": f"{prefix}_GITEE",
+            "atomgit": f"{prefix}_ATOMGIT", "github": f"{prefix}_GITHUB"}
+    location = getattr(config, keys[platform])
+    other_locations = [getattr(config, key) for name, key in keys.items() if name != platform]
+    comparable = location
+    if not use_s3:
+        comparable = os.path.abspath(location)
+        other_locations = [os.path.abspath(path) for path in other_locations]
+    # 手动配置也必须保持状态隔离, 否则新平台可能误用其他平台成功记录.
     if not location or comparable in other_locations:
-        raise ValueError("AtomGit 状态位置必须非空且与其他备份平台独立")
+        raise ValueError(f"{platform} 状态位置必须非空且与其他备份平台独立")
     return location
 
 
 class _S3Store:
-    def __init__(self, use_gitee: bool = False, use_atomgit: bool = False):
+    def __init__(self, use_gitee: bool = False, use_atomgit: bool = False, use_github: bool = False):
         import boto3
         from botocore.config import Config
 
@@ -39,8 +38,10 @@ class _S3Store:
         if config.S3_SESSION_TOKEN:
             kwargs["aws_session_token"] = config.S3_SESSION_TOKEN
 
-        if use_atomgit:
-            self._key = _atomgit_state_location(use_s3=True)
+        if use_github:
+            self._key = _isolated_state_location("github", use_s3=True)
+        elif use_atomgit:
+            self._key = _isolated_state_location("atomgit", use_s3=True)
         elif use_gitee:
             self._key = config.S3_STATE_KEY_GITEE
         else:
@@ -75,9 +76,11 @@ class _S3Store:
 
 
 class _LocalStore:
-    def __init__(self, use_gitee: bool = False, use_atomgit: bool = False):
-        if use_atomgit:
-            self._path = _atomgit_state_location(use_s3=False)
+    def __init__(self, use_gitee: bool = False, use_atomgit: bool = False, use_github: bool = False):
+        if use_github:
+            self._path = _isolated_state_location("github", use_s3=False)
+        elif use_atomgit:
+            self._path = _isolated_state_location("atomgit", use_s3=False)
         elif use_gitee:
             self._path = config.LOCAL_STATE_FILE_GITEE
         else:
@@ -100,7 +103,10 @@ class _LocalStore:
         return f"本地文件 {self._path}"
 
 
-def get_store(use_gitee: bool = False, use_atomgit: bool = False):
+def get_store(use_gitee: bool = False, use_atomgit: bool = False, use_github: bool = False):
+    if sum((use_gitee, use_atomgit, use_github)) > 1:
+        raise ValueError("每个状态存储只能指定一个备份平台")
+    options = {"use_gitee": use_gitee, "use_atomgit": use_atomgit, "use_github": use_github}
     if config.S3_ENABLED:
-        return _S3Store(use_gitee=use_gitee, use_atomgit=use_atomgit)
-    return _LocalStore(use_gitee=use_gitee, use_atomgit=use_atomgit)
+        return _S3Store(**options)
+    return _LocalStore(**options)

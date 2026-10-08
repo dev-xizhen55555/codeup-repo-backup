@@ -169,10 +169,11 @@ class StateIsolationTests(unittest.TestCase):
                 LOCAL_STATE_FILE=f"{directory}/gitlab.json",
                 LOCAL_STATE_FILE_GITEE=f"{directory}/gitee.json",
                 LOCAL_STATE_FILE_ATOMGIT=f"{directory}/atomgit.json",
+                LOCAL_STATE_FILE_GITHUB=f"{directory}/github.json",
                 S3_ENDPOINT="https://s3.example", S3_BUCKET="test",
                 S3_ACCESS_KEY_ID="fake", S3_SECRET_ACCESS_KEY="fake", S3_REGION="test",
                 S3_SESSION_TOKEN="", S3_STATE_KEY="gitlab", S3_STATE_KEY_GITEE="gitee",
-                S3_STATE_KEY_ATOMGIT="atomgit",
+                S3_STATE_KEY_ATOMGIT="atomgit", S3_STATE_KEY_GITHUB="github",
             )
             module = load_module("state_store", configuration)
             stores = [module.get_store(), module.get_store(use_gitee=True),
@@ -214,7 +215,7 @@ class DockerFlowTests(unittest.TestCase):
     def setUp(self):
         self.configuration = types.SimpleNamespace(
             ATOMGIT_TOKEN="fake", GITLAB_TOKEN="", GITLAB_NAMESPACE_PATH="", GITLAB_NAMESPACE_ID=0,
-            GITEE_TOKEN="", FORCE_FULL=False, BATCH_SIZE=10, CONCURRENCY=1,
+            GITEE_TOKEN="", GITHUB_BACKUP_TOKEN="", FORCE_FULL=False, BATCH_SIZE=10, CONCURRENCY=1,
         )
         self.codeup = Mock()
         self.codeup.list_repositories.return_value = [{
@@ -232,6 +233,7 @@ class DockerFlowTests(unittest.TestCase):
             ("gitlab_client", "GitLabClient", Mock()),
             ("gitee_client", "GiteeClient", Mock()),
             ("atomgit_client", "AtomGitClient", self.client),
+            ("github_client", "GitHubClient", Mock()),
         ):
             module = types.ModuleType(name)
             setattr(module, class_name, Mock(return_value=instance))
@@ -252,7 +254,7 @@ class DockerFlowTests(unittest.TestCase):
             "https://source/repo.git", "https://atomgit.com/owner/backup.git", "backup",
             target_username="owner", target_password="fake",
         )
-        self.states.get_store.assert_called_once_with(use_gitee=False, use_atomgit=True)
+        self.states.get_store.assert_called_once_with(use_gitee=False, use_atomgit=True, use_github=False)
         self.store.save.assert_called_once_with({
             "target": {"api_base": "https://api.atomgit.com/api/v5", "login": "owner"},
             "repositories": {"backup": "today"},
